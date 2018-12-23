@@ -33,7 +33,7 @@
     mounted() {
       this.initMapTalk()
       this.drawRegion()
-      // this.drawWall()
+      this.drawWall()
     },
     methods: {
       initMapTalk() {
@@ -89,7 +89,7 @@
             polygonOpacity: 0.5
           },
           properties: {
-            // altitude: altitude,
+            altitude: altitude,
             id: properties.id,
             index: idx,
             properties: properties
@@ -119,9 +119,9 @@
           const polygonsLayer = new maptalks.VectorLayer(
             "vector-polygon",
             self.polygons,
-            // {
-            //   enableAltitude: true
-            // }
+            {
+              enableAltitude: true
+            }
           ).addTo(self.mapDom);
         })
       },
