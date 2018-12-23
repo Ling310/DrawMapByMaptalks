@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>基于maptalks的2.5D地图绘制</title>
+</head>
+
+<body>
+  <div id="app">
+    <div id="mapDom" style="width:1000px;height:500px"></div>
+  </div>
+</body>
+
+<script src="https://cdn.bootcss.com/vue/2.5.21/vue.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maptalks/dist/maptalks.min.css">
+<script src="https://cdn.jsdelivr.net/npm/maptalks/dist/maptalks.min.js"></script>
+<script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+<script>
+  const edgeColor	= '#4682B4'
+  const polygonColors = ["#C0C0C0", "#87CEFA"];
+  const mapCenter = [106.355, 26.75]
+  const altitude = 15000;
+
+  let vm = new Vue({
+    el: '#app',
+    data() {
+      return {
+        polygons: [],
+        limitLines: []
+      }
+    },
+    mounted() {
+      this.initMapTalk()
+      this.drawRegion()
+      // this.drawWall()
+    },
+    methods: {
+      initMapTalk() {
+        const url = 'https://api.mapbox.com/styles/v1/ling13/cjpv0upr10vc52sodrbmtrmrb/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoibGluZzEzIiwiYSI6ImNqbHozcGRwZDBzMHIzcXBqNXV2dGR4dHAifQ.32-e7GIttC0FriVwvJ0GqA#6.1/27.044989/106.588086/0'
+        this.mapDom = new maptalks.Map('mapDom', {
+          center: mapCenter,
+          zoom: 7,
+          pitch: 45, // y方向倾斜角度
+          baseLayer: new maptalks.TileLayer('base', {
+            urlTemplate: url,
+            subdomains: ['a','b','c','d'],
+            attribution: '&copy; <a href="http://osm.org">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/">CARTO</a>'
+          })
+        });
+      },
+      drawLimitLines(idx, coordinates, properties) {
+        const outLine = new maptalks.MultiLineString(coordinates, {
+          symbol: {
+            lineColor: edgeColor,
+            lineWidth: 1,
+            textPlacement: "vertex"
+          },
+          properties: {
+            altitude: altitude,
+            index: idx,
+            id: properties.id,
+            properties: properties
+          }
+        });
+        this.limitLines.push(outLine);
+      },
+      drawBorderLines(coordinates, properties) {
+        const outLine = new maptalks.MultiLineString(coordinates, {
+          symbol: {
+            lineColor: edgeColor,
+            lineWidth: 1,
+            textPlacement: "vertex"
+          },
+          properties: {
+            altitude: altitude,
+            id: properties.id,
+            properties: properties
+          }
+        });
+        this.limitLines.push(outLine);
+      },
+      drawPolygons(idx, coordinates, properties) {
+        const polygon = new maptalks.MultiPolygon(coordinates, {
+          symbol: {
+            lineWidth: 1,
+            lineColor: edgeColor,
+            polygonFill: polygonColors[0],
+            polygonOpacity: 0.5
+          },
+          properties: {
+            // altitude: altitude,
+            id: properties.id,
+            index: idx,
+            properties: properties
+          }
+        })
+        .on("mouseenter", function(e) {
+          e.target.updateSymbol({
+            polygonFill: polygonColors[1]
+          });
+        })
+        .on("mouseout", function(e) {
+          e.target.updateSymbol({
+            polygonFill: polygonColors[0]
+          });
+        })
+        this.polygons.push(polygon);
+      },
+      drawRegion() {
+        const self = this
+        $.getJSON("guizhou.json", "", function(mapData) {
+          const features = mapData.features;
+          features.forEach((g, i) => {
+            const properties = g.properties;
+            const coordinates = g.geometry.coordinates
+            self.drawPolygons(i, coordinates, properties)
+          });
+          const polygonsLayer = new maptalks.VectorLayer(
+            "vector-polygon",
+            self.polygons,
+            // {
+            //   enableAltitude: true
+            // }
+          ).addTo(self.mapDom);
+        })
+      },
+      drawWall() {
+        const self = this
+        $.getJSON("guizhou-border.json", "", function(borderMapData) {
+          const borderFeatures = borderMapData.features[0]
+          const properties = borderFeatures.properties;
+          const pathCoordinates = borderFeatures.geometry.coordinates.map(d => { return d[0] })
+          self.drawBorderLines(pathCoordinates, properties)
+          const limitLinesLayer = new maptalks.VectorLayer(
+            "vector-line",
+            self.limitLines,
+            {
+              enableAltitude: true,
+              drawAltitude: {
+                polygonFill: edgeColor,
+                polygonOpacity: 0.3,
+                lineWidth: 0
+              }
+            }
+          ).addTo(self.mapDom);
+        })
+      }
+    }
+  })
+</script>
+
+</html>
